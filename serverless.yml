@@ -1,0 +1,28 @@
+service: simple-rio-lambda
+
+provider:
+  name: aws
+  runtime: python3.6
+  stage: production
+
+  region: us-west-2
+
+  environment:
+    PYTHONPATH: /var/task/vendored
+    GDAL_DISABLE_READDIR_ON_OPEN: true
+
+  iamRoleStatements:
+  -  Effect: "Allow"
+     Action:
+       - s3:GetObject
+     Resource:
+       - "arn:aws:s3:::landsat-pds/*"
+
+package:
+  artifact: package.zip
+
+functions:
+  test:
+    handler: handler.main
+    memorySize: 1536
+    timeout: 30
