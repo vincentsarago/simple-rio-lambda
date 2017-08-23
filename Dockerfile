@@ -24,8 +24,6 @@ RUN curl https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tar.xz | tar -xJ \
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
-RUN pip3 install numpy --no-binary numpy #numpy header are needed to build rasterio from source
-
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt --no-binary numpy -t /tmp/vendored #Install numpy from source to save some space
 
