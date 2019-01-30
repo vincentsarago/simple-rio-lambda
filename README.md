@@ -14,7 +14,7 @@ Python 3.6 + Rasterio on AWS Lambda
 ### Create and deploy
 
 ```
-make all
+make package
 
 npm install -g serverless
 
@@ -38,10 +38,9 @@ response = client.invoke(
     Payload=json.dumps({"scene": "LC08_L1TP_013030_20170520_20170520_01_RT"})
 )
 print(json.loads(response['Payload'].read().decode()))
-
 ```
 
 
 #### Links
 [lambda-rasterio](https://github.com/perrygeo/lambda-rasterio)
-[remotepixel-api](https://github.com/RemotePixel/remotepixel-api)
+[remotepixel-tiler](https://github.com/RemotePixel/remotepixel-tiler)

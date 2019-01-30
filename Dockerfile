@@ -1,43 +1,31 @@
-FROM amazonlinux:latest
+FROM lambci/lambda:build-python3.6
 
-# Configure SHELL
-RUN rm /bin/sh && ln -s /bin/bash /bin/sh
-ENV SHELL /bin/bash
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
 
-# Install apt dependencies
-RUN yum install -y gcc \
-                   gcc-c++ \
-                   freetype-devel \
-                   yum-utils \
-                   findutils \
-                   openssl-devel
+ENV PACKAGE_PREFIX /tmp/python
 
-RUN yum -y groupinstall development
+COPY hander.py $PACKAGE_PREFIX/hander.py
+RUN pip3 install rasterio --no-binary numpy -t $PACKAGE_PREFIX -U
 
-RUN curl https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tar.xz | tar -xJ \
-    && cd Python-3.6.1 \
-    && ./configure --prefix=/usr/local --enable-shared \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf Python-3.6.1
+################################################################################
+#                            REDUCE PACKAGE SIZE                               #
+################################################################################
+RUN find $PACKAGE_PREFIX -name "*-info" -type d -exec rm -rdf {} +
+RUN rm -rdf $PACKAGE_PREFIX/boto3/ \
+  && rm -rdf $PACKAGE_PREFIX/botocore/ \
+  && rm -rdf $PACKAGE_PREFIX/docutils/ \
+  && rm -rdf $PACKAGE_PREFIX/dateutil/ \
+  && rm -rdf $PACKAGE_PREFIX/jmespath/ \
+  && rm -rdf $PACKAGE_PREFIX/s3transfer/ \
+  && rm -rdf $PACKAGE_PREFIX/numpy/doc/
 
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+# Leave module precompiles for faster Lambda startup
+RUN find $PACKAGE_PREFIX -type f -name '*.pyc' | while read f; do n=$(echo $f | sed 's/__pycache__\///' | sed 's/.cpython-36//'); cp $f $n; done;
+RUN find $PACKAGE_PREFIX -type d -a -name '__pycache__' -print0 | xargs -0 rm -rf
+RUN find $PACKAGE_PREFIX -type f -a -name '*.py' -print0 | xargs -0 rm -f
 
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt --no-binary numpy -t /tmp/vendored #Install numpy from source to save some space
-
-COPY handler.py /tmp/vendored/handler.py
-
-#Reduce Lambda package size (<250Mb)
-RUN echo "package original size $(du -sh /tmp/vendored | cut -f1)"
-RUN find /tmp/vendored \
-    \( -type d -a -name test -o -name tests \) \
-    -o \( -type f -a -name '*.pyc' -o -name '*.pyo' \) \
-    -print0 | xargs -0 rm -f
-RUN echo "package new size $(du -sh /tmp/vendored | cut -f1)"
-
-RUN cd /tmp \
-    && zip -r9q /tmp/package.zip vendored/*
-
-RUN rm -rf /tmp/vendored/
+################################################################################
+#                              CREATE ARCHIVE                                  #
+################################################################################
+RUN cd $PACKAGE_PREFIX && zip -r9q /tmp/package.zip *

@@ -7,10 +7,6 @@ provider:
 
   region: us-west-2
 
-  environment:
-    PYTHONPATH: /var/task/vendored
-    GDAL_DISABLE_READDIR_ON_OPEN: true
-
   iamRoleStatements:
   -  Effect: "Allow"
      Action:

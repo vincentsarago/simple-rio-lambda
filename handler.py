@@ -1,7 +1,6 @@
 
 import os
 import re
-import json
 import datetime
 
 import rasterio as rio

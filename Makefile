@@ -1,48 +1,31 @@
 
 SHELL = /bin/bash
 
-all: build package
-
-
 build:
-	docker build -f Dockerfile --tag remotepixel:latest .
-
-run:
-	docker run \
-		-w /var/task/ \
-		--name remotepixel \
-		--env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-		--env AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-		--env AWS_REGION=us-west-2 \
-		--env PYTHONPATH=/var/task/vendored \
-		-itd \
-		remotepixel:latest
-
-
-package:
-	docker run \
-		-w /var/task/ \
-		--name remotepixel \
-		-itd \
-		remotepixel:latest
-	docker cp remotepixel:/tmp/package.zip package.zip
-	docker stop remotepixel
-	docker rm remotepixel
-
+	docker build --tag lambda:latest .
+	docker run --name lambda -itd lambda:latest /bin/bash
+	docker cp lambda:/tmp/package.zip package.zip
+	docker stop lambda
+	docker rm lambda
 
 shell:
-	docker run \
-		--name remotepixel  \
-		--volume $(shell pwd)/:/data \
-		--env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-		--env AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-		--env AWS_REGION=us-west-2 \
-		--env PYTHONPATH=/var/task/vendored \
-		--rm \
-		-it \
-		remotepixel:latest /bin/bash
+	docker build --tag lambda:latest .
+	docker run --name docker  \
+		--volume $(shell pwd)/:/local \
+		--rm -it lambda:latest bash
 
+test: build
+	docker run \
+		--name lambda \
+		--volume $(shell pwd)/:/local \
+		--env GDAL_DATA=/var/task/share/gdal \
+		-itd \
+		lambci/lambda:build-python3.6 bash
+	docker exec -it lambda bash -c 'unzip -q /local/package.zip -d /var/task/'
+	docker exec -it lambda python3 -c 'from handler import main; print(main({"scene": "LC08_L1TP_013030_20170520_20170520_01_RT"}, None))'
+	docker stop lambda
+	docker rm lambda
 
 clean:
-	docker stop remotepixel
-	docker rm remotepixel
+	docker stop lambda
+	docker rm lambda
